@@ -1,3 +1,4 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>手牽手 跟唱教室</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -45,6 +46,14 @@ button{cursor:pointer}
 .chip{flex:none;border:0;background:var(--chip);border-radius:999px;padding:7px 14px;white-space:nowrap}
 .chip[aria-pressed="true"]{background:var(--accent);color:#fff}
 .more[hidden]{display:none!important}
+.shade{display:grid;grid-template-rows:1fr;transition:grid-template-rows .32s ease}
+.shade.up{grid-template-rows:0fr}
+.shadeIn{overflow:hidden;min-height:0}
+.shadeIn>div{padding-top:10px}
+.pull{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;margin:6px 0 -6px;padding:2px 0 4px;border:0;background:transparent;color:var(--muted);font-size:13px;letter-spacing:.08em}
+.pull .grip{width:44px;height:5px;border-radius:3px;background:var(--rule)}
+.pull:hover .grip{background:var(--accent)}
+@media (prefers-reduced-motion:reduce){.shade{transition:none}}
 [hidden]{display:none!important}
 
 main{padding-block:20px 120px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));max-width:1200px;margin:0 auto}
@@ -69,11 +78,16 @@ main{padding-block:20px 120px;padding-left:max(16px,env(safe-area-inset-left,0px
 .ch.done .h,.ch.done .zy{color:var(--sung)}
 .ch.on .h,.ch.on .zy{color:var(--accent)}
 .ch.on{border-bottom-color:var(--accent)}
-.hideLyr .ch .h,.hideLyr .ch .zy{color:transparent!important}
-.hideLyr .ch{border-bottom-color:var(--rule)}
-.hideLyr .ch.on{border-bottom-color:var(--accent)}
-.hideLyr .ch.done{border-bottom-color:var(--sung)}
-.hideLyr .ch.peek .h,.hideLyr .ch.peek .zy{color:var(--muted)!important}
+.ch.hd .h,.ch.hd .zy{color:transparent!important}
+.ch.hd{border-bottom-color:var(--rule)}
+.ch.hd.on{border-bottom-color:var(--accent)}
+.ch.hd.done{border-bottom-color:var(--sung)}
+.ch.hd.peek .h,.ch.hd.peek .zy{color:var(--muted)!important}
+.ch{margin-right:calc(var(--lyric)*.5*var(--g,0))}
+.noRg .ch{margin-right:0}
+.line.ab{background:var(--chip)}
+.line.ab.cur{background:var(--accent-soft)}
+.line.abA{outline:3px solid var(--accent);outline-offset:-3px}
 
 .pop{position:fixed;z-index:20;left:50%;bottom:max(20px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--sheet);border:1px solid var(--rule);border-radius:16px;padding:14px 16px;box-shadow:0 10px 30px rgba(0,0,0,.18);width:min(420px,calc(100% - 32px));display:flex;flex-direction:column;gap:10px}
 .pop .big{font-family:var(--f-lyric);font-size:40px;line-height:1}
@@ -106,13 +120,16 @@ main{padding-block:20px 120px;padding-left:max(16px,env(safe-area-inset-left,0px
       <input type="range" id="seek" min="0" max="100" step="0.1" value="0" aria-label="播放位置">
     </div>
   </div>
+  <div class="shade" id="shade"><div class="shadeIn"><div>
   <div class="row">
     <div class="ctl"><label for="speed">速度</label><input type="range" id="speed" min="50" max="120" step="5" value="100"><output id="speedV">100%</output></div>
     <div class="ctl"><label for="size">字體</label><input type="range" id="size" min="24" max="110" step="2" value="52"><output id="sizeV">52</output></div>
     <button class="btn" id="zyBtn" aria-pressed="true">注音</button>
-    <button class="btn" id="hideBtn" aria-pressed="false">背唱模式</button>
+    <button class="btn" id="hideBtn" aria-pressed="false">背唱:關</button>
     <button class="btn" id="metBtn" aria-pressed="false">🥁 節拍器</button>
-    <button class="btn" id="moreBtn" aria-expanded="false">更多設定 ▾</button>
+    <button class="btn" id="abBtn" aria-pressed="false">A-B 反覆</button>
+    <button class="btn" id="rgBtn" aria-pressed="true">節奏間距</button>
+    <button class="btn" id="moreBtn" aria-expanded="false">進階設定 ▾</button>
   </div>
   <div class="row more" id="more" hidden>
     <button class="btn" id="melBtn" aria-pressed="true">旋律</button>
@@ -125,6 +142,8 @@ main{padding-block:20px 120px;padding-left:max(16px,env(safe-area-inset-left,0px
     <button class="btn" id="editBtn" aria-pressed="false">修改注音</button>
   </div>
   <div class="row"><div class="chips" id="chips"></div></div>
+  </div></div></div>
+  <button class="pull" id="pull" aria-expanded="false" aria-controls="shade"><span class="grip"></span><span id="pullT">展開設定</span><span id="pullA" aria-hidden="true">▾</span></button>
 </div>
 
 <main id="sheet"></main>
@@ -143,8 +162,9 @@ const lb = (arr, t) => { let lo = 0, hi = arr.length; while (lo < hi) { const m 
 const $ = id => document.getElementById(id);
 const store = {get(k,d){try{const v=localStorage.getItem('hqh_'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},
                set(k,v){try{localStorage.setItem('hqh_'+k,JSON.stringify(v))}catch(e){}}};
-const opt = Object.assign({speed:100,size:52,zy:true,hide:false,mel:true,pno:true,melVol:80,pnoVol:55,ci:true,scroll:true,loop:false,cue:true,met:false}, store.get('opt',{}));
+const opt = Object.assign({speed:100,size:52,zy:true,hide:false,hideLv:0,rg:true,mel:true,pno:true,melVol:80,pnoVol:55,ci:true,scroll:true,loop:false,cue:true,met:false,shadeOpen:false}, store.get('opt',{}));
 let zyFix = store.get('zy',{});
+if (opt.hide && !opt.hideLv) opt.hideLv = 3;
 const saveOpt = () => store.set('opt', opt);
 
 /* ---------- build sheet ---------- */
@@ -164,25 +184,30 @@ function buildSheet(){
     if (!sec.lines.length) {
       const l = document.createElement('div'); l.className = 'line';
       l.innerHTML = '<button class="lp" aria-label="播放' + sec.name + '">▶</button><span class="empty">（鋼琴演奏，沒有歌詞）</span>';
-      l.querySelector('.lp').onclick = () => playRange(sec.t0, sec.t1, sec.name, true);
+      l.querySelector('.lp').onclick = () => playOnce(sec.t0, sec.t1, sec.name);
+      l.onclick = ev => { if (!ev.target.closest('.lp')) startFrom(sec.t0, -1); };
       d.appendChild(l);
     }
     sec.lines.forEach(li => {
       const L = S.lines[li];
       const l = document.createElement('div'); l.className = 'line';
       const b = document.createElement('button'); b.className = 'lp'; b.textContent = '▶'; b.setAttribute('aria-label','只播這一句');
-      b.onclick = () => playRange(L.t0, L.t1 + 0.15, '這一句：' + lineText(li), true);
+      b.onclick = () => playOnce(L.t0, L.t1 + 0.15, '這一句：' + lineText(li));
       const w = document.createElement('div'); w.className = 'lyr';
       for (let k = L.a; k <= L.b; k++) {
         const c = S.chars[k], e = document.createElement('span'); e.className = 'ch'; e.dataset.k = k;
         e.innerHTML = '<span class="h">' + c[0] + '</span>' + zyHTML(zyFix[c[0]] || c[1]);
+        const nx = k < L.b ? S.chars[k+1][2] : null;
+        if (nx != null) { const bi = Math.max(0, Math.min(S.beats.length - 2, lb(beatArr, c[2] + 0.0001) - 1)); e.style.setProperty('--g', ((nx - c[2]) / (S.beats[bi+1] - S.beats[bi])).toFixed(3)); }
         e.onclick = () => onCharTap(k, e);
         w.appendChild(e); chEls[k] = e;
       }
+      l.onclick = ev => { if (!ev.target.closest('.lp') && !ev.target.closest('.ch')) startFrom(L.t0, li); };
       l.append(b, w); d.appendChild(l); lineEls[li] = l;
     });
     m.appendChild(d); secEls[si] = d;
   });
+  applyHide(); if (T.ab) markAB(T.abLo, T.abHi);
 }
 const lineText = li => { const L = S.lines[li]; let s=''; for (let k=L.a;k<=L.b;k++) s += S.chars[k][0]; return s; };
 
@@ -266,7 +291,7 @@ function silence(){
 }
 
 /* ---------- transport ---------- */
-const T = {playing:false, from:0, to:S.total + 0.5, label:'全曲', pos:0, startCtx:0, origin:0, mi:0, pi:0, timer:null, chipKey:'all', bi:0};
+const T = {playing:false, from:0, to:S.total + 0.5, label:'全曲', pos:0, startCtx:0, origin:0, mi:0, pi:0, timer:null, chipKey:'all', bi:0, once:false, ab:false, abLo:0, abHi:0};
 const rate = () => opt.speed / 100;
 const beatArr = S.beats.map(x => [x]);
 const songNow = () => T.playing ? T.origin + (ctx.currentTime - T.startCtx) * rate() : T.pos;
@@ -292,21 +317,25 @@ function tick(){
   while (T.pi < S.pno.length && S.pno[T.pi][0] < lim) { const n = S.pno[T.pi++]; if (n[0] >= T.origin - 0.01) pnoNote(n[2], at(n[0]), Math.min(n[1], T.to - n[0] + 0.3) / r); }
   while (T.bi < S.beats.length && S.beats[T.bi] < lim) { const bt = S.beats[T.bi++]; if (opt.met && bt >= T.origin - 0.01 && bt < T.to) click(at(bt), false, true); }
   if (songNow() >= T.to) {
-    if (opt.loop) { T.origin = T.from; T.mi = lb(S.mel, T.from - 0.005); T.pi = lb(S.pno, T.from - 0.005); T.bi = lb(beatArr, T.from - 0.005); T.startCtx = ctx.currentTime + 0.6; }
+    if (opt.loop || T.ab) { T.origin = T.from; T.mi = lb(S.mel, T.from - 0.005); T.pi = lb(S.pno, T.from - 0.005); T.bi = lb(beatArr, T.from - 0.005); T.startCtx = ctx.currentTime + 0.6; }
     else { stop(true); }
   }
 }
 function pause(){ if (!T.playing) return; T.pos = Math.max(T.from, songNow()); T.playing = false; clearInterval(T.timer); silence(); setPlayBtn(); }
-function stop(toStart){ T.playing = false; clearInterval(T.timer); if (ctx) silence(); T.pos = toStart ? T.from : T.pos; setPlayBtn(); paint(T.pos, true); }
+function stop(toStart){ T.playing = false; clearInterval(T.timer); if (ctx) silence(); T.pos = toStart ? T.from : T.pos; if (T.once) { const p = T.pos; wholeSong(); T.pos = p; } setPlayBtn(); paint(T.pos, true); }
+/* back to the whole song (keeps the current position) */
+function wholeSong(){ clearAB(); T.from = 0; T.to = S.total + 0.5; T.label = '全曲'; T.chipKey = 'all'; T.once = false; markChips(); updateWhere(); }
+/* play just one line / one piano section, immediately (no count-in, no cue box) */
+function playOnce(a, b, label){ clearAB(); T.from = a; T.to = b; T.label = label; T.pos = a; T.chipKey = ''; T.once = true; markChips(); updateWhere(); startAt(a, false); }
 function setPlayBtn(){ paintCue(0); $('play').textContent = '▶'; $('play').setAttribute('aria-label','播放'); }
 function playRange(a, b, label, ci){
-  T.from = a; T.to = b; T.label = label; T.pos = a;
+  clearAB(); T.once = false; T.from = a; T.to = b; T.label = label; T.pos = a;
   const key = label === '全曲' ? 'all' : (S.sections.findIndex(s => s.name === label) >= 0 ? 's' + S.sections.findIndex(s => s.name === label) : '');
   T.chipKey = key; markChips(); updateWhere();
   startAt(a, ci && opt.ci);
 }
 function markChips(){ document.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(c.dataset.r === T.chipKey))); }
-function updateWhere(){ $('where').innerHTML = '範圍：<b>' + T.label + '</b>' + (opt.loop ? '　🔁 循環中' : ''); }
+function updateWhere(){ $('where').innerHTML = '範圍：<b>' + T.label + '</b>' + ((opt.loop || T.ab) ? '　🔁 循環中' : ''); }
 
 /* ---------- highlighting ---------- */
 let lastK = -2, lastLine = -1, lastSec = -1;
@@ -375,20 +404,24 @@ function frame(){ if (T.playing) paint(songNow()); requestAnimationFrame(frame);
 let seeking = false, editMode = false, peekTimer;
 function onCharTap(k, e){
   if (editMode) return openPop(S.chars[k][0]);
-  if (opt.hide) { e.classList.add('peek'); clearTimeout(peekTimer); peekTimer = setTimeout(() => e.classList.remove('peek'), 1500); return; }
-  const li = lineOf(k);  /* tap a character: sing from here to the end of the current range */
-  const a = S.chars[k][2];
-  if (a < T.from || a >= T.to) { T.from = 0; T.to = S.total + 0.5; T.label = '全曲'; T.chipKey = 'all'; markChips(); updateWhere(); }
-  startAt(a, opt.ci);
+  if (e.classList.contains('hd')) { e.classList.add('peek'); clearTimeout(peekTimer); peekTimer = setTimeout(() => e.classList.remove('peek'), 1500); }
+  startFrom(S.chars[k][2], lineOf(k));
 }
-$('play').onclick = () => { if (T.playing) pause(); else startAt(T.pos < T.from || T.pos >= T.to ? T.from : T.pos, opt.ci); };
-$('restart').onclick = () => { T.pos = T.from; if (T.playing) startAt(T.from, opt.ci); else paint(T.from, true); };
+/* tap a line / character: start playing right there, no count-in, through to the end of the song (or of the chosen section) */
+function startFrom(a, li){
+  if (abMode && li >= 0) return abTap(li);
+  if (T.playing) pause();
+  if (T.once || a < T.from || a >= T.to) wholeSong();
+  T.pos = a; paint(a, true);   /* only select the spot; the big play button starts from here */
+}
+$('play').onclick = () => { if (T.playing) { pause(); return; } if (T.once) wholeSong(); startAt(T.pos < T.from || T.pos >= T.to ? T.from : T.pos, opt.ci); };
+$('restart').onclick = () => { if (T.once) wholeSong(); T.pos = T.from; if (T.playing) startAt(T.from, opt.ci); else paint(T.from, true); };
 document.addEventListener('keydown', e => { if (e.code === 'Space' && !/INPUT|BUTTON/.test(e.target.tagName)) { e.preventDefault(); $('play').click(); } });
 const seek = $('seek');
 seek.addEventListener('input', () => { seeking = true; });
 seek.addEventListener('change', () => {
   seeking = false; const t = seek.value / 100 * S.total;
-  T.from = 0; T.to = S.total + 0.5; T.label = '全曲'; T.chipKey = 'all'; markChips(); updateWhere();
+  wholeSong();
   T.pos = t; if (T.playing) startAt(t, false); else paint(t, true);
 });
 function toggle(id, key, after){
@@ -397,11 +430,34 @@ function toggle(id, key, after){
 }
 toggle('loop','loop', updateWhere);
 toggle('zyBtn','zy', () => document.body.classList.toggle('noZy', !opt.zy));
-toggle('hideBtn','hide', () => document.body.classList.toggle('hideLyr', opt.hide));
+const HL = ['背唱:關', '背唱:首字', '背唱:前半', '背唱:全藏'];
+function applyHide(){
+  const lv = opt.hideLv;
+  S.lines.forEach(L => { const n = L.b - L.a + 1; for (let k = L.a; k <= L.b; k++) { const i = k - L.a; chEls[k].classList.toggle('hd', lv === 3 || (lv === 1 && i > 0) || (lv === 2 && i >= Math.ceil(n / 2))); } });
+  $('hideBtn').textContent = HL[lv]; $('hideBtn').setAttribute('aria-pressed', String(lv > 0));
+}
+$('hideBtn').onclick = () => { opt.hideLv = (opt.hideLv + 1) % 4; saveOpt(); applyHide(); toast(['歌詞全部顯示', '只顯示每句第一個字', '只顯示每句前半', '歌詞全部隱藏（點字可偷看）'][opt.hideLv]); };
+/* A-B repeat: tap the first line (A), then the last line (B); the big play button loops that stretch */
+let abMode = false, abFirst = null;
+function markAB(lo, hi){ lineEls.forEach((e, i) => e && e.classList.toggle('ab', i >= lo && i <= hi)); }
+function clearAB(){ T.ab = false; abFirst = null; lineEls.forEach(e => e && e.classList.remove('ab', 'abA')); }
+function abTap(li){
+  if (abFirst == null) { clearAB(); abFirst = li; lineEls[li].classList.add('abA'); toast('A 已選，再點最後一句 (B)'); return; }
+  const lo = Math.min(abFirst, li), hi = Math.max(abFirst, li);
+  if (T.playing) pause();
+  T.once = false; T.from = S.lines[lo].t0; T.to = S.lines[hi].t1 + 0.15; T.chipKey = ''; T.label = 'A-B：第 ' + (lo + 1) + '–' + (hi + 1) + ' 句';
+  clearAB(); T.ab = true; T.abLo = lo; T.abHi = hi; markAB(lo, hi); markChips(); updateWhere();
+  T.pos = T.from; paint(T.pos, true); toast('已設好，按播放開始反覆');
+}
+$('abBtn').onclick = () => {
+  abMode = !abMode; $('abBtn').setAttribute('aria-pressed', String(abMode));
+  if (abMode) toast('點第一句 (A)，再點最後一句 (B)'); else { abFirst = null; lineEls.forEach(e => e && e.classList.remove('abA')); if (T.ab) { wholeSong(); } }
+};
+toggle('rgBtn','rg', () => document.body.classList.toggle('noRg', !opt.rg));
 toggle('melBtn','mel', applyVol); toggle('pnoBtn','pno', applyVol);
 toggle('metBtn','met'); toggle('ciBtn','ci'); toggle('cueBtn','cue'); toggle('scrollBtn','scroll');
 $('editBtn').onclick = () => { editMode = !editMode; $('editBtn').setAttribute('aria-pressed', String(editMode)); toast(editMode ? '點任何一個字來修改注音' : '已結束修改'); };
-$('moreBtn').onclick = () => { const m = $('more'); m.hidden = !m.hidden; $('moreBtn').setAttribute('aria-expanded', String(!m.hidden)); $('moreBtn').textContent = m.hidden ? '更多設定 ▾' : '收起設定 ▴'; };
+$('moreBtn').onclick = () => { const m = $('more'); m.hidden = !m.hidden; $('moreBtn').setAttribute('aria-expanded', String(!m.hidden)); $('moreBtn').textContent = m.hidden ? '進階設定 ▾' : '收起進階 ▴'; };
 function slider(id, key, out, fmt, after){
   const s = $(id); s.value = opt[key]; if (out) $(out).textContent = fmt(opt[key]);
   s.addEventListener('input', () => { opt[key] = +s.value; if (out) $(out).textContent = fmt(opt[key]); after && after(); });
@@ -421,6 +477,11 @@ function toast(msg){ const t = $('toast'); t.textContent = msg; t.hidden = false
 function rebuild(){ buildSheet(); lastK = -2; lastLine = -1; lastSec = -1; paint(songNow(), true); }
 
 document.documentElement.style.setProperty('--lyric', opt.size + 'px');
-document.body.classList.toggle('noZy', !opt.zy); document.body.classList.toggle('hideLyr', opt.hide);
+document.body.classList.toggle('noZy', !opt.zy); document.body.classList.toggle('noRg', !opt.rg);
+function setShade(open){ opt.shadeOpen = open; $('shade').classList.toggle('up', !open); $('shade').inert = !open; $('pull').setAttribute('aria-expanded', String(open)); $('pullT').textContent = open ? '收起設定' : '展開設定'; $('pullA').textContent = open ? '▴' : '▾'; }
+$('pull').onclick = () => { setShade(!opt.shadeOpen); saveOpt(); };
+setShade(!!opt.shadeOpen);
 buildSheet(); buildChips(); markChips(); updateWhere(); paint(0, true); requestAnimationFrame(frame);
 </script>
+
+</body></html>
