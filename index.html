@@ -94,6 +94,10 @@ main{padding-block:20px 120px;padding-left:max(16px,env(safe-area-inset-left,0px
 .pop input{border:1px solid var(--rule);border-radius:10px;padding:8px 10px;font-size:20px;background:var(--paper);width:100%}
 .pop .row{justify-content:flex-end}
 .hint{font-size:13px;color:var(--muted)}
+.log{width:100%;max-height:min(40vh,320px);overflow:auto;border:1px solid var(--rule);border-radius:12px;padding:10px 14px;background:var(--paper)}
+.log h3{margin:0 0 6px;font-size:15px}
+.log dt{font-weight:700;margin-top:8px;font-size:14px}
+.log dd{margin:2px 0 0;color:var(--muted);font-size:14px;line-height:1.6}
 .cue{position:fixed;z-index:15;left:50%;bottom:calc(max(20px,env(safe-area-inset-bottom,0px)) + 8px);transform:translateX(-50%);display:flex;align-items:center;gap:18px;background:var(--sheet);border:3px solid var(--accent);border-radius:28px;padding:10px 24px 10px 14px;box-shadow:0 12px 34px rgba(0,0,0,.2);max-width:calc(100% - 32px);pointer-events:none}
 .cueN{font-family:var(--f-ui);font-weight:700;font-size:clamp(64px,14vw,130px);line-height:1;color:var(--accent);min-width:1.1em;text-align:center;font-variant-numeric:tabular-nums}
 .cueN.go{font-family:var(--f-lyric);font-size:clamp(48px,10vw,96px)}
@@ -107,6 +111,13 @@ main{padding-block:20px 120px;padding-left:max(16px,env(safe-area-inset-left,0px
 .toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 12px);transform:translateX(-50%);background:var(--ink);color:var(--sheet);padding:8px 14px;border-radius:999px;z-index:30;font-size:14px}
 @media (max-width:560px){.ctl input[type=range]{width:90px}.title{font-size:22px}}
 @media (prefers-reduced-motion:reduce){.line{transition:none}}
+.logBg{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px}
+.logBox{background:var(--sheet);color:var(--ink);border-radius:18px;width:min(520px,100%);max-height:85vh;overflow:auto;padding:18px 20px;box-shadow:0 16px 40px rgba(0,0,0,.3)}
+.logBox h2{margin:0 0 10px;font-family:var(--f-lyric);font-size:24px}
+.logBox h3{margin:14px 0 4px;font-size:14px;color:var(--accent)}
+.logBox ul{margin:0;padding-left:20px;line-height:1.7;font-size:15px}
+.logBox .btn{margin-top:14px;width:100%}
+.title{user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
 </style>
 
 <div class="bar">
@@ -140,6 +151,7 @@ main{padding-block:20px 120px;padding-left:max(16px,env(safe-area-inset-left,0px
     <button class="btn" id="scrollBtn" aria-pressed="true">自動捲動</button>
     <button class="btn" id="cueBtn" aria-pressed="true">空拍提醒 4321</button>
     <button class="btn" id="editBtn" aria-pressed="false">修改注音</button>
+    <button class="btn" id="logBtn">📋 更新日誌</button>
   </div>
   <div class="row"><div class="chips" id="chips"></div></div>
   </div></div></div>
@@ -484,4 +496,22 @@ setShade(!!opt.shadeOpen);
 buildSheet(); buildChips(); markChips(); updateWhere(); paint(0, true); requestAnimationFrame(frame);
 </script>
 
+<div class="logBg" id="logBg" hidden><div class="logBox" role="dialog" aria-label="更新日誌">
+<div id="pwView"><h2>更新日誌</h2><p style="margin:0 0 10px;color:var(--muted)">請輸入密碼</p><input id="pwIn" type="password" inputmode="numeric" autocomplete="off" aria-label="密碼" style="width:100%;border:1px solid var(--rule);border-radius:10px;padding:10px 12px;font-size:20px;background:var(--paper)"><div id="pwErr" style="color:#d33;font-size:14px;min-height:20px;margin-top:6px"></div><button class="btn" id="pwOk" style="background:var(--ink);color:var(--sheet)">確定</button></div>
+<div id="logView" hidden><h2>更新日誌</h2>
+<h3>11/05 後期</h3><ul><li>設定列可收起（下拉把手）</li><li>新增 A-B 反覆：點第一句再點最後一句</li><li>背唱模式分四級：關／首字／前半／全藏</li><li>新增「節奏間距」：字距隨音長變化</li><li>點句子或字只選定位置，按大播放鈕才開始</li><li>新增更新日誌（進階設定內，需密碼）</li></ul>
+<h3>11/05</h3><ul><li>新增節拍器開關</li><li>修正「修改注音」視窗與 4321 倒數框一直擋住歌詞的問題</li></ul>
+<h3>11/04</h3><ul><li>手牽手跟唱教室上線：歌詞逐字亮起、注音、字體大小可調</li><li>速度 50–120%、整曲／分段／單句播放、循環</li><li>背唱模式、預備拍、自動捲動、可修改注音</li><li>大空拍 4、3、2、1 倒數提醒</li></ul>
+</div><button class="btn" id="logClose">關閉</button></div></div>
+<script>
+(function(){var bg=document.getElementById('logBg'),pv=document.getElementById('pwView'),lv=document.getElementById('logView'),pi=document.getElementById('pwIn'),er=document.getElementById('pwErr');
+function openLog(){pv.hidden=false;lv.hidden=true;pi.value='';er.textContent='';bg.hidden=false;setTimeout(function(){pi.focus()},50)}
+function tryPw(){if(pi.value==='1234'){pv.hidden=true;lv.hidden=false}else{er.textContent='密碼不對';pi.value='';pi.focus()}}
+document.getElementById('logBtn').onclick=openLog;
+document.getElementById('pwOk').onclick=tryPw;
+pi.addEventListener('keydown',function(e){if(e.key==='Enter')tryPw()});
+document.getElementById('logClose').onclick=function(){bg.hidden=true};
+bg.addEventListener('click',function(e){if(e.target===bg)bg.hidden=true});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')bg.hidden=true});})();
+</script>
 </body></html>
