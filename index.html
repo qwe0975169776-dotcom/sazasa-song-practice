@@ -45,6 +45,7 @@ button{cursor:pointer}
 .chip{flex:none;border:0;background:var(--chip);border-radius:999px;padding:7px 14px;white-space:nowrap}
 .chip[aria-pressed="true"]{background:var(--accent);color:#fff}
 .more[hidden]{display:none!important}
+[hidden]{display:none!important}
 
 main{padding-block:20px 120px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));max-width:1200px;margin:0 auto}
 .sec{margin-bottom:28px}
@@ -110,6 +111,7 @@ main{padding-block:20px 120px;padding-left:max(16px,env(safe-area-inset-left,0px
     <div class="ctl"><label for="size">字體</label><input type="range" id="size" min="24" max="110" step="2" value="52"><output id="sizeV">52</output></div>
     <button class="btn" id="zyBtn" aria-pressed="true">注音</button>
     <button class="btn" id="hideBtn" aria-pressed="false">背唱模式</button>
+    <button class="btn" id="metBtn" aria-pressed="false">🥁 節拍器</button>
     <button class="btn" id="moreBtn" aria-expanded="false">更多設定 ▾</button>
   </div>
   <div class="row more" id="more" hidden>
@@ -141,7 +143,7 @@ const lb = (arr, t) => { let lo = 0, hi = arr.length; while (lo < hi) { const m 
 const $ = id => document.getElementById(id);
 const store = {get(k,d){try{const v=localStorage.getItem('hqh_'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},
                set(k,v){try{localStorage.setItem('hqh_'+k,JSON.stringify(v))}catch(e){}}};
-const opt = Object.assign({speed:100,size:52,zy:true,hide:false,mel:true,pno:true,melVol:80,pnoVol:55,ci:true,scroll:true,loop:false,cue:true}, store.get('opt',{}));
+const opt = Object.assign({speed:100,size:52,zy:true,hide:false,mel:true,pno:true,melVol:80,pnoVol:55,ci:true,scroll:true,loop:false,cue:true,met:false}, store.get('opt',{}));
 let zyFix = store.get('zy',{});
 const saveOpt = () => store.set('opt', opt);
 
@@ -252,9 +254,9 @@ function pnoNote(p, t, d){
   [o1,o2].forEach(o => { o.start(t); o.stop(end + 0.5); });
   track({g, o:[o1,o2]});
 }
-function click(t, strong){
+function click(t, strong, soft){
   const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'square'; o.frequency.value = strong ? 1600 : 1100;
-  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.5, t + 0.002); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.06);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(soft ? 0.32 : 0.5, t + 0.002); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.06);
   o.connect(g); g.connect(clickBus); o.start(t); o.stop(t + 0.08); track({g, o:[o]});
 }
 function silence(){
@@ -264,8 +266,9 @@ function silence(){
 }
 
 /* ---------- transport ---------- */
-const T = {playing:false, from:0, to:S.total + 0.5, label:'全曲', pos:0, startCtx:0, origin:0, mi:0, pi:0, timer:null, chipKey:'all'};
+const T = {playing:false, from:0, to:S.total + 0.5, label:'全曲', pos:0, startCtx:0, origin:0, mi:0, pi:0, timer:null, chipKey:'all', bi:0};
 const rate = () => opt.speed / 100;
+const beatArr = S.beats.map(x => [x]);
 const songNow = () => T.playing ? T.origin + (ctx.currentTime - T.startCtx) * rate() : T.pos;
 function beatLen(t){ const b = S.beats; let i = Math.max(1, Math.min(b.length - 1, lb(b.map(x=>[x]), t))); return (b[i] - b[i-1]) / rate(); }
 
@@ -278,7 +281,7 @@ function startAt(origin, countIn){
   for (let k = 0; k < ci; k++) click(T.startCtx - (ci - k) * bl, k === 0);
   const blSong = bl * rate(), li0 = S.lines.findIndex(L => L.t1 > origin + 0.05);
   T.ciCue = ci ? {t: origin, li: li0, ticks: [4,3,2,1].map(k => origin - k * blSong), ci: true} : null;
-  T.origin = origin; T.mi = lb(S.mel, origin - 0.005); T.pi = lb(S.pno, origin - 0.005);
+  T.origin = origin; T.mi = lb(S.mel, origin - 0.005); T.pi = lb(S.pno, origin - 0.005); T.bi = lb(beatArr, origin - 0.005);
   T.playing = true; $('play').textContent = '❚❚'; $('play').setAttribute('aria-label','暫停');
   clearInterval(T.timer); T.timer = setInterval(tick, 25); tick();
 }
@@ -287,8 +290,9 @@ function tick(){
   const at = t => T.startCtx + (t - T.origin) / r;
   while (T.mi < S.mel.length && S.mel[T.mi][0] < lim) { const n = S.mel[T.mi++]; if (n[0] >= T.origin - 0.01) melNote(n[2], at(n[0]), Math.min(n[1], T.to - n[0]) / r); }
   while (T.pi < S.pno.length && S.pno[T.pi][0] < lim) { const n = S.pno[T.pi++]; if (n[0] >= T.origin - 0.01) pnoNote(n[2], at(n[0]), Math.min(n[1], T.to - n[0] + 0.3) / r); }
+  while (T.bi < S.beats.length && S.beats[T.bi] < lim) { const bt = S.beats[T.bi++]; if (opt.met && bt >= T.origin - 0.01 && bt < T.to) click(at(bt), false, true); }
   if (songNow() >= T.to) {
-    if (opt.loop) { T.origin = T.from; T.mi = lb(S.mel, T.from - 0.005); T.pi = lb(S.pno, T.from - 0.005); T.startCtx = ctx.currentTime + 0.6; }
+    if (opt.loop) { T.origin = T.from; T.mi = lb(S.mel, T.from - 0.005); T.pi = lb(S.pno, T.from - 0.005); T.bi = lb(beatArr, T.from - 0.005); T.startCtx = ctx.currentTime + 0.6; }
     else { stop(true); }
   }
 }
@@ -395,7 +399,7 @@ toggle('loop','loop', updateWhere);
 toggle('zyBtn','zy', () => document.body.classList.toggle('noZy', !opt.zy));
 toggle('hideBtn','hide', () => document.body.classList.toggle('hideLyr', opt.hide));
 toggle('melBtn','mel', applyVol); toggle('pnoBtn','pno', applyVol);
-toggle('ciBtn','ci'); toggle('cueBtn','cue'); toggle('scrollBtn','scroll');
+toggle('metBtn','met'); toggle('ciBtn','ci'); toggle('cueBtn','cue'); toggle('scrollBtn','scroll');
 $('editBtn').onclick = () => { editMode = !editMode; $('editBtn').setAttribute('aria-pressed', String(editMode)); toast(editMode ? '點任何一個字來修改注音' : '已結束修改'); };
 $('moreBtn').onclick = () => { const m = $('more'); m.hidden = !m.hidden; $('moreBtn').setAttribute('aria-expanded', String(!m.hidden)); $('moreBtn').textContent = m.hidden ? '更多設定 ▾' : '收起設定 ▴'; };
 function slider(id, key, out, fmt, after){
