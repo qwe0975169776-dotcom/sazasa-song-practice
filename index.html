@@ -283,8 +283,14 @@ function buildChips(){
   });
 }
 
-/* ---------- audio: three recorded tracks (melody1 / melody2 / piano, 68 bpm) played through Web Audio ---------- */
-let ctx, master, mel1Bus, mel2Bus, pnoBus, clickBus, mel1El, mel2El, pnoEl, haltTimer = 0;
+/* ---------- audio: two recorded tracks (melody / piano, 68 bpm) played through Web Audio so volumes work on phones ---------- */
+let ctx, master, mel1Bus, mel2Bus, pnoBus, clickBus, haltTimer = 0;
+const mel1El = new Audio('audio/melody1.mp3'), mel2El = new Audio('audio/melody2.mp3'), pnoEl = new Audio('audio/piano.mp3');
+[['旋律一', mel1El], ['旋律二', mel2El], ['鋼琴伴奏', pnoEl]].forEach(([label, e]) => {
+  e.preload = 'auto'; e.preservesPitch = true; e.webkitPreservesPitch = true; e.mozPreservesPitch = true;
+  e.onerror = () => toast('⚠️ ' + label + '載入失敗（請確認檔案非0KB且為標準MP3）');
+  e.load();
+});
 function ensureAudio(){
   if (ctx) return;
   ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -292,11 +298,6 @@ function ensureAudio(){
   master = ctx.createGain(); master.gain.value = 0.9; master.connect(comp); comp.connect(ctx.destination);
   mel1Bus = ctx.createGain(); mel2Bus = ctx.createGain(); pnoBus = ctx.createGain(); clickBus = ctx.createGain(); clickBus.gain.value = 0.5;
   mel1Bus.connect(master); mel2Bus.connect(master); pnoBus.connect(master); clickBus.connect(master);
-  mel1El = new Audio('audio/melody1.mp3'); mel2El = new Audio('audio/melody2.mp3'); pnoEl = new Audio('audio/piano.mp3');
-  [['旋律一', mel1El], ['旋律二', mel2El], ['鋼琴伴奏', pnoEl]].forEach(([label, e]) => {
-    e.preload = 'auto'; e.preservesPitch = true; e.webkitPreservesPitch = true; e.mozPreservesPitch = true;
-    e.onerror = () => toast('⚠️ ' + label + '音檔載入失敗');
-  });
   ctx.createMediaElementSource(mel1El).connect(mel1Bus); ctx.createMediaElementSource(mel2El).connect(mel2Bus); ctx.createMediaElementSource(pnoEl).connect(pnoBus);
   applyVol();
 }
@@ -328,7 +329,9 @@ function silence(fade){
 const T = {playing:false, mediaOn:false, from:0, to:S.total + 0.5, label:'全曲', pos:0, startCtx:0, origin:0, timer:null, chipKey:'all', bi:0, once:false, ab:false, abLo:0, abHi:0};
 const rate = () => opt.speed / 100;
 const beatArr = S.beats.map(x => [x]);
-const songNow = () => !T.playing ? T.pos : (T.mediaOn ? pnoEl.currentTime : T.origin - Math.max(0, T.startCtx - ctx.currentTime) * rate());
+/* song time: during the count-in it runs backwards from the start point; afterwards it follows the melody track itself */
+const masterTrack = () => !pnoEl.error ? pnoEl : (!mel1El.error ? mel1El : mel2El);
+const songNow = () => !T.playing ? T.pos : (T.mediaOn ? masterTrack().currentTime : T.origin - Math.max(0, T.startCtx - ctx.currentTime) * rate());
 function beatLen(t){ const b = S.beats; let i = Math.max(1, Math.min(b.length - 1, lb(beatArr, t))); return (b[i] - b[i-1]) / rate(); }
 
 function startAt(origin, countIn){
@@ -352,18 +355,24 @@ function tick(){
   const r = rate();
   if (!T.mediaOn) {
     if (ctx.currentTime < T.startCtx - 0.03) return runBeats(songNow(), r);
-    const ready = e => e.error || e.readyState >= 2;
-    if (mel1El.readyState < 1 || mel2El.readyState < 1 || pnoEl.readyState < 1) { T.startCtx = ctx.currentTime + 0.05; if (!T.loadMsg) { T.loadMsg = true; toast('載入音檔中…'); } return; }
-    if (!T.seekDone) { T.seekDone = true; try { if (!mel1El.error) mel1El.currentTime = T.origin; if (!mel2El.error) mel2El.currentTime = T.origin; if (!pnoEl.error) pnoEl.currentTime = T.origin; } catch(e){} }
-    if (mel1El.seeking || mel2El.seeking || pnoEl.seeking || !ready(mel1El) || !ready(mel2El) || !ready(pnoEl)) { T.startCtx = ctx.currentTime + 0.05; if (!T.loadMsg) { T.loadMsg = true; toast('緩衝音檔中…'); } return; }
+    const metaReady = e => e.error || e.readyState >= 1;
+    const dataReady = e => e.error || e.readyState >= 2;
+    if (!metaReady(mel1El) || !metaReady(mel2El) || !metaReady(pnoEl)) { T.startCtx = ctx.currentTime + 0.05; if (!T.loadMsg) { T.loadMsg = true; toast('載入音檔中…'); } return; }
+    if (!T.seekDone) { T.seekDone = true; [mel1El, mel2El, pnoEl].forEach(e => { if (!e.error) { try { e.currentTime = T.origin; } catch(err){} } }); }
+    if ((!mel1El.error && mel1El.seeking) || (!mel2El.error && mel2El.seeking) || (!pnoEl.error && pnoEl.seeking) || !dataReady(mel1El) || !dataReady(mel2El) || !dataReady(pnoEl)) { T.startCtx = ctx.currentTime + 0.05; return; }
     T.mediaOn = true;
     [mel1El, mel2El, pnoEl].forEach(e => { if (!e.error) { e.playbackRate = r; e.play().catch(() => {}); } });
   }
-  const sn = songNow();
-  if (Math.abs(mel1El.currentTime - pnoEl.currentTime) > 0.06 && !mel1El.paused) { try { mel1El.currentTime = pnoEl.currentTime; } catch(e){} }
-  if (Math.abs(mel2El.currentTime - pnoEl.currentTime) > 0.06 && !mel2El.paused) { try { mel2El.currentTime = pnoEl.currentTime; } catch(e){} }
+  const sn = songNow(), mt = masterTrack(), nowMs = performance.now();
+  if (!T.lastSync || nowMs - T.lastSync > 1500) {
+    [mel1El, mel2El, pnoEl].forEach(e => {
+      if (e !== mt && !e.error && !e.paused && !e.seeking && Math.abs(e.currentTime - mt.currentTime) > 0.22) {
+        try { e.currentTime = mt.currentTime; T.lastSync = nowMs; } catch(err){}
+      }
+    });
+  }
   runBeats(sn, r);
-  if (sn >= T.to || pnoEl.ended) {
+  if (sn >= T.to || mt.ended) {
     if (opt.loop || T.ab) startAt(T.from, false);
     else stop(true);
   }
@@ -374,7 +383,9 @@ function runBeats(sn, r){
 }
 function pause(){ if (!T.playing) return; T.pos = Math.max(T.from, songNow()); T.playing = false; clearInterval(T.timer); silence(true); setPlayBtn(); }
 function stop(toStart){ T.playing = false; clearInterval(T.timer); if (ctx) silence(true); T.pos = toStart ? T.from : T.pos; if (T.once) { const p = T.pos; wholeSong(); T.pos = p; } setPlayBtn(); paint(T.pos, true); }
+/* back to the whole song (keeps the current position) */
 function wholeSong(){ clearAB(); T.from = 0; T.to = S.total + 0.5; T.label = '全曲'; T.chipKey = 'all'; T.once = false; markChips(); updateWhere(); }
+/* play just one line / one piano section, immediately (no count-in, no cue box) */
 function playOnce(a, b, label){ clearAB(); T.from = a; T.to = b; T.label = label; T.pos = a; T.chipKey = ''; T.once = true; markChips(); updateWhere(); startAt(a, false); }
 function setPlayBtn(){ paintCue(0); $('play').textContent = '▶'; $('play').setAttribute('aria-label','播放'); }
 function playRange(a, b, label, ci){
@@ -384,7 +395,7 @@ function playRange(a, b, label, ci){
   startAt(a, ci && opt.ci);
 }
 function markChips(){ document.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(c.dataset.r === T.chipKey))); }
-function updateWhere(){ $('where').innerHTML = '範圍：<b>' + T.label + '</b>' + ((opt.loop || T.ab) ? ' 🔁 循環中' : ''); }
+function updateWhere(){ $('where').innerHTML = '範圍：<b>' + T.label + '</b>' + ((opt.loop || T.ab) ? '　🔁 循環中' : ''); }
 
 /* ---------- highlighting ---------- */
 let lastK = -2, lastLine = -1, lastSec = -1;
@@ -393,7 +404,7 @@ function charAt(t){
   const i = lb(charStarts, t + 0.0001) - 1;
   if (i < 0) return -1;
   const c = S.chars[i], next = S.chars[i+1];
-  if (t > c[3] + 0.35 && (!next || t < next[2])) return -(i + 10);
+  if (t > c[3] + 0.35 && (!next || t < next[2])) return -(i + 10);  /* between phrases: none lit */
   return i;
 }
 function lineOf(k){ return S.lines.findIndex(L => k >= L.a && k <= L.b); }
@@ -443,11 +454,11 @@ function paintCue(t){
   }
   if (nl !== nextLine) {
     if (nextLine >= 0 && lineEls[nextLine]) lineEls[nextLine].classList.remove('next');
-    if (nl >= 0 && lineEls[nl]) { lineEls[nl].classList.add('next'); if (opt.scroll) lineEls[nl].scrollIntoView({block:'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'}); }
+    if (nl >= 0 && lineEls[nl]) { lineEls[nl].classList.add('next'); if (opt.scroll && lastLine < 0) lineEls[nl].scrollIntoView({block:'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'}); }
     nextLine = nl;
   }
 }
-/* bouncing red dot */
+/* bouncing red dot: hops from character to character and bounces once per beat, showing the beat number in the bar */
 const ball = document.createElement('div'); ball.id = 'ball'; ball.hidden = true; document.body.appendChild(ball);
 const barNo = []; { let bs = 0; const bars = new Set(S.bars); for (let i = 0; i < S.beats.length; i++) { if (bars.has(i)) bs = i; barNo[i] = i - bs + 1; } }
 function charXY(k){ const e = chEls[k]; if (!e) return null; const h = e.querySelector('.h') || e, r = h.getBoundingClientRect(); return {x: r.left + r.width / 2, y: r.top}; }
@@ -462,6 +473,7 @@ function ballUpdate(t){
   if (nxt !== cur) { const hop = 0.28, st = cs[nxt][2]; u = Math.min(1, Math.max(0, (t - (st - hop)) / hop)); u = u * u * (3 - 2 * u); }
   if (i < 0) u = 0;
   const x = A.x + (B.x - A.x) * u, y0 = A.y + (B.y - A.y) * u;
+  /* beat phase (count-in beats before the song run backwards) */
   const bt = S.beats; let bi = lb(beatArr, t + 0.0001) - 1, p, n;
   const bl0 = bt[1] - bt[0];
   if (bi < 0) { const q = (t - bt[0]) / bl0; const f = Math.floor(q); p = q - f; n = (((f % 4) + 4) % 4) + 1; }
@@ -484,11 +496,12 @@ function onCharTap(k, e){
   if (e.classList.contains('hd')) { e.classList.add('peek'); clearTimeout(peekTimer); peekTimer = setTimeout(() => e.classList.remove('peek'), 1500); }
   startFrom(S.chars[k][2], lineOf(k));
 }
+/* tap a line / character: start playing right there, no count-in, through to the end of the song (or of the chosen section) */
 function startFrom(a, li){
   if (abMode && li >= 0) return abTap(li);
   if (T.playing) pause();
   if (T.once || a < T.from || a >= T.to) wholeSong();
-  T.pos = a; paint(a, true);
+  T.pos = a; paint(a, true);   /* only select the spot; the big play button starts from here */
 }
 $('play').onclick = () => { if (T.playing) { pause(); return; } if (T.once) wholeSong(); startAt(T.pos < T.from || T.pos >= T.to ? T.from : T.pos, opt.ci); };
 $('restart').onclick = () => { if (T.once) wholeSong(); T.pos = T.from; if (T.playing) startAt(T.from, opt.ci); else paint(T.from, true); };
@@ -513,6 +526,7 @@ function applyHide(){
   $('hideBtn').textContent = HL[lv]; $('hideBtn').setAttribute('aria-pressed', String(lv > 0));
 }
 $('hideBtn').onclick = () => { opt.hideLv = (opt.hideLv + 1) % 4; saveOpt(); applyHide(); toast(['歌詞全部顯示', '只顯示每句第一個字', '只顯示每句前半', '歌詞全部隱藏（點字可偷看）'][opt.hideLv]); };
+/* A-B repeat: tap the first line (A), then the last line (B); the big play button loops that stretch */
 let abMode = false, abFirst = null;
 function markAB(lo, hi){ lineEls.forEach((e, i) => e && e.classList.toggle('ab', i >= lo && i <= hi)); }
 function clearAB(){ T.ab = false; abFirst = null; lineEls.forEach(e => e && e.classList.remove('ab', 'abA')); }
@@ -556,6 +570,7 @@ document.body.classList.toggle('noZy', !opt.zy); document.body.classList.toggle(
 function setShade(open){ opt.shadeOpen = open; $('shade').classList.toggle('up', !open); $('shade').inert = !open; $('pull').setAttribute('aria-expanded', String(open)); $('pullT').textContent = open ? '收起設定' : '展開設定'; $('pullA').textContent = open ? '▴' : '▾'; }
 $('pull').onclick = () => { setShade(!opt.shadeOpen); saveOpt(); };
 setShade(!!opt.shadeOpen);
+/* warm skins: cycle with the 🎨 button; floating decorations per skin */
 const SKINS = [['sun','暖陽','🌼 ☀️ 🎵 🐥 🌻 ♪'], ['forest','森林','🍃 🌿 🦉 🍄 🎵 🌳'], ['candy','糖果','🍬 🎀 ⭐ 🎵 🧁 💗'], ['night','星空','🌙 ⭐ ✨ 🎵 🌠 ⭐'], ['plain','簡約','']];
 const deco = document.createElement('div'); deco.id = 'deco'; deco.setAttribute('aria-hidden', 'true'); document.body.prepend(deco);
 function applySkin(){
@@ -580,7 +595,7 @@ buildSheet(); buildChips(); markChips(); updateWhere(); paint(0, true); requestA
 <div class="logBg" id="logBg" hidden><div class="logBox" role="dialog" aria-label="更新日誌">
 <div id="pwView"><h2>更新日誌</h2><p style="margin:0 0 10px;color:var(--muted)">請輸入密碼</p><input id="pwIn" type="password" inputmode="numeric" autocomplete="off" aria-label="密碼" style="width:100%;border:1px solid var(--rule);border-radius:10px;padding:10px 12px;font-size:20px;background:var(--paper)"><div id="pwErr" style="color:#d33;font-size:14px;min-height:20px;margin-top:6px"></div><button class="btn" id="pwOk" style="background:var(--ink);color:var(--sheet)">確定</button></div>
 <div id="logView" hidden><h2>更新日誌</h2>
-<h3>11/20</h3><ul><li>旋律音軌拆分為二聲部（旋律一、旋律二），各自提供獨立開關與音量滑桿</li><li>修正三軌同時載入時，因瀏覽器緩衝門檻過嚴導致預備拍結束後卡住不播放的問題</li></ul>
+<h3>11/20</h3><ul><li>旋律音軌拆分為二聲部（旋律一、旋律二），各自提供獨立開關與音量滑桿</li><li>修正三軌載入死鎖，並放寬音軌對齊容差與冷卻時間，解決播放時聲音與畫面來回跳動的問題</li></ul>
 <h3>11/05 晚上</h3><ul><li>新增 🎨 主題：暖陽、森林、糖果、星空（歌詞用標楷體、飄浮小圖案、唱到的字會彈跳放大），也可切回簡約</li><li>新增「🔴 拍子紅點」：紅點跟著歌詞跳，每拍彈一下，裡面的數字是小節內第幾拍</li><li>音色改成用 Cubase 錄好的真實音檔（旋律、鋼琴伴奏分開），全曲速度 68</li><li>速度滑桿改為變速播放（音高不變），範圍限制 80%–100% 以保持音質；歌詞時間重新對齊音檔</li></ul>
 <h3>11/05 後期</h3><ul><li>設定列可收起（下拉把手）</li><li>新增 A-B 反覆：點第一句再點最後一句</li><li>背唱模式分四級：關／首字／前半／全藏</li><li>新增「節奏間距」：字距隨音長變化</li><li>點句子或字只選定位置，按大播放鈕才開始</li><li>新增更新日誌（進階設定內，需密碼）</li></ul>
 <h3>11/05</h3><ul><li>新增節拍器開關</li><li>修正「修改注音」視窗與 4321 倒數框一直擋住歌詞的問題</li></ul>
