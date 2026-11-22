@@ -285,7 +285,7 @@ function buildChips(){
 
 /* ---------- audio: two recorded tracks (melody / piano, 68 bpm) played through Web Audio so volumes work on phones ---------- */
 let ctx, master, mel1Bus, mel2Bus, pnoBus, clickBus, haltTimer = 0;
-const mel1El = new Audio('audio/melody1.mp3'), mel2El = new Audio('audio/melody2.mp3'), pnoEl = new Audio('audio/piano.mp3');
+const mel1El = new Audio('audio/melody2.mp3'), mel2El = new Audio('audio/melody1.mp3'), pnoEl = new Audio('audio/piano.mp3');
 [['旋律一', mel1El], ['旋律二', mel2El], ['鋼琴伴奏', pnoEl]].forEach(([label, e]) => {
   e.preload = 'auto'; e.preservesPitch = true; e.webkitPreservesPitch = true; e.mozPreservesPitch = true;
   e.onerror = () => toast('⚠️ ' + label + '載入失敗（請確認檔案非0KB且為標準MP3）');
@@ -595,6 +595,7 @@ buildSheet(); buildChips(); markChips(); updateWhere(); paint(0, true); requestA
 <div class="logBg" id="logBg" hidden><div class="logBox" role="dialog" aria-label="更新日誌">
 <div id="pwView"><h2>更新日誌</h2><p style="margin:0 0 10px;color:var(--muted)">請輸入密碼</p><input id="pwIn" type="password" inputmode="numeric" autocomplete="off" aria-label="密碼" style="width:100%;border:1px solid var(--rule);border-radius:10px;padding:10px 12px;font-size:20px;background:var(--paper)"><div id="pwErr" style="color:#d33;font-size:14px;min-height:20px;margin-top:6px"></div><button class="btn" id="pwOk" style="background:var(--ink);color:var(--sheet)">確定</button></div>
 <div id="logView" hidden><h2>更新日誌</h2>
+<h3>11/22</h3><ul><li>修正旋律一、旋律二讀到的音檔對調的問題</li></ul>
 <h3>11/20</h3><ul><li>旋律音軌拆分為二聲部（旋律一、旋律二），各自提供獨立開關與音量滑桿</li><li>修正三軌載入死鎖，並放寬音軌對齊容差與冷卻時間，解決播放時聲音與畫面來回跳動的問題</li></ul>
 <h3>11/05 晚上</h3><ul><li>新增 🎨 主題：暖陽、森林、糖果、星空（歌詞用標楷體、飄浮小圖案、唱到的字會彈跳放大），也可切回簡約</li><li>新增「🔴 拍子紅點」：紅點跟著歌詞跳，每拍彈一下，裡面的數字是小節內第幾拍</li><li>音色改成用 Cubase 錄好的真實音檔（旋律、鋼琴伴奏分開），全曲速度 68</li><li>速度滑桿改為變速播放（音高不變），範圍限制 80%–100% 以保持音質；歌詞時間重新對齊音檔</li></ul>
 <h3>11/05 後期</h3><ul><li>設定列可收起（下拉把手）</li><li>新增 A-B 反覆：點第一句再點最後一句</li><li>背唱模式分四級：關／首字／前半／全藏</li><li>新增「節奏間距」：字距隨音長變化</li><li>點句子或字只選定位置，按大播放鈕才開始</li><li>新增更新日誌（進階設定內，需密碼）</li></ul>
