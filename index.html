@@ -108,6 +108,26 @@ button,input{font:inherit;color:inherit}button{cursor:pointer}
 .logBox input{width:100%;border:1px solid var(--rule);border-radius:10px;padding:10px 12px;font-size:20px}
 @media (max-width:620px){.mon{margin-left:0;padding:4px 10px;gap:8px}.mon b{font-size:15px}.head h1{font-size:19px}.ctl input{width:90px}.card{padding:10px 12px}.trow{gap:6px}.btn{min-height:38px;padding:6px 9px;font-size:13px}.play{min-width:84px}.mixer{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.strip{padding:8px 10px}.where{display:none}}
 @media (prefers-reduced-motion:reduce){.h,.line,.dot{transition:none}.cueN.pulse{animation:none}}
+
+/* 節奏格：每個字放在它的拍子下面，上方標 1 2 3 4，下方有長度條 */
+.lyr.rhy{display:flex;flex-wrap:wrap;align-items:flex-start;gap:6px 0;max-width:100%;overflow-x:auto;overflow-y:hidden}
+.line{min-width:0}
+.bar{position:relative;flex:none;width:calc(var(--lyric)*var(--bw));height:calc(var(--lyric)*1.9 + 14px);border-left:3px solid var(--ink);margin-right:2px}
+.bc{position:absolute;top:0;bottom:0;left:calc(var(--lyric)*var(--x));width:calc(var(--lyric)*var(--w));border-left:1px dotted var(--rule2);border-radius:0 0 8px 8px;transition:background .08s}
+.bc:first-child{border-left:0}
+.bn{position:absolute;left:4px;top:0;font:700 max(13px,calc(var(--lyric)*.4))/1.15 var(--f-ui);color:var(--muted);transition:transform .08s,color .08s;transform-origin:left top}
+.bc:first-child .bn{color:var(--ink)}
+.bc.on{background:rgba(158,41,41,.13)}
+.bc.on .bn{color:var(--accent);transform:scale(1.4)}
+.sm{position:absolute;top:calc(var(--lyric)*.06);left:calc(var(--lyric)*var(--x));font:600 max(10px,calc(var(--lyric)*.26))/1 var(--f-ui);color:var(--muted);opacity:.8;pointer-events:none}
+.rhy .ch{position:absolute;top:calc(var(--lyric)*.5);left:calc(var(--lyric)*var(--x));margin:0;border-bottom:0}
+.lb{position:absolute;left:calc(var(--lyric)*var(--x));width:calc(var(--lyric)*var(--w));bottom:3px;height:max(7px,calc(var(--lyric)*.14));border-radius:99px;background:rgba(43,91,132,.22);overflow:hidden;pointer-events:none}
+.lb i{display:block;height:100%;width:0;background:var(--c1);border-radius:99px}
+.lb.done i{width:100%!important;background:var(--sung)}
+.lb.on i{background:var(--accent)}
+.lb.on{background:rgba(127,29,29,.2)}
+.lb.done{background:rgba(75,99,82,.25)}
+.lyr.rhy.nolb .lb{display:none}
 </style></head>
 <body>
 <div class="wrap">
@@ -125,6 +145,8 @@ button,input{font:inherit;color:inherit}button{cursor:pointer}
       <button class="btn" id="abBtn" aria-pressed="false">A-B 反覆</button>
       <button class="btn" id="hideBtn" aria-pressed="false">背唱：關</button>
       <button class="btn" id="ciBtn" aria-pressed="true">🥁 預備拍</button>
+      <button class="btn" id="rhyBtn" aria-pressed="true">🎼 節奏格</button>
+      <button class="btn" id="metBtn" aria-pressed="false">🔔 節拍聲</button>
       <div class="mon" aria-live="off"><div><small>小節</small><b id="mBar">1</b></div><div><small>拍</small><b id="mBeat">1</b></div><div class="dots" id="dots"></div></div>
     </div>
     <div class="tl"><span id="tNow">0:00</span><input type="range" id="seek" min="0" max="1000" value="0" aria-label="播放位置"><span id="tTot">0:00</span></div>
@@ -137,7 +159,7 @@ button,input{font:inherit;color:inherit}button{cursor:pointer}
       <div class="mixer" id="mixer"></div>
       <div class="opts">
         <div class="ctl"><label for="speed">速度</label><input type="range" id="speed" min="80" max="100" step="5" value="100"><output id="speedV">100%</output></div>
-        <div class="ctl"><label for="size">字體</label><input type="range" id="size" min="24" max="110" step="2" value="52"><output id="sizeV">52</output></div>
+        <div class="ctl"><label for="size">字體</label><input type="range" id="size" min="20" max="110" step="2" value="52"><output id="sizeV">52</output></div>
         <button class="btn" id="ballBtn" aria-pressed="true">🔴 拍子紅點</button>
       </div>
     </div>
@@ -153,6 +175,7 @@ button,input{font:inherit;color:inherit}button{cursor:pointer}
 <div class="logBg" id="logBg" hidden><div class="logBox" role="dialog" aria-label="更新日誌">
 <div id="pwView"><h2>更新日誌</h2><p style="color:var(--muted)">請輸入密碼</p><input id="pwIn" type="password" inputmode="numeric" autocomplete="off" aria-label="密碼"><div id="pwErr" style="color:#d33;font-size:14px;min-height:20px;margin-top:6px"></div><button class="btn" id="pwOk">確定</button></div>
 <div id="logView" hidden><h2>更新日誌</h2>
+<h3>11/26</h3><ul><li>新增「🎼 節奏格」：每個字放在它那一拍下面，上方標 1 2 3 4（唱到哪拍哪格就亮），後半拍的字上方有「＆」，沒有字的拍就是休息</li><li>每個字下面有「長度條」，唱到時會慢慢填滿，長音的條子比較長</li><li>上方新增「🔔 節拍聲」按鈕（原本在音軌設定裡），節拍聲音量可調</li></ul>
 <h3>11/23</h3><ul><li>新增歌曲「發聲練習」（約 3 分鐘、速度 92，固定唱名注音、人聲示範＋鋼琴伴奏）</li><li>上方可切換歌曲；版面改成混音台式：每個音軌有靜音和音量</li><li>拿掉段落按鈕（全曲、前奏、主歌、副歌…）、主題切換、修改注音、以及較少用的開關（預備拍、自動捲動、空拍提醒、節奏間距改為固定開啟）</li><li>所有音檔改成 128 kbps，載入更快</li><li>新增小節／拍數顯示燈</li><li>加回「🥁 預備拍」開關：按播放或從頭時，先響 4 聲並顯示 4321 倒數再開始（兩首歌都適用）</li><li>修正手牽手旋律一、旋律二讀到的音檔對調</li><li>頁尾加上製作者署名</li></ul>
 <h3>11/22</h3><ul><li>修正旋律一、旋律二讀到的音檔對調的問題</li></ul>
 <h3>11/20</h3><ul><li>旋律音軌拆分為二聲部（旋律一、旋律二），各自提供獨立開關與音量滑桿</li><li>修正三軌載入死鎖，並放寬音軌對齊容差與冷卻時間，解決播放時聲音與畫面來回跳動的問題</li></ul>
@@ -176,7 +199,7 @@ const SONGS = {
 const $ = id => document.getElementById(id);
 const lb = (arr, t) => { let lo = 0, hi = arr.length; while (lo < hi) { const m = (lo + hi) >> 1; if (arr[m][0] < t) lo = m + 1; else hi = m; } return lo; };
 const store = {get(k,d){try{const v=localStorage.getItem('hqh_'+k);return v==null?d:JSON.parse(v)}catch(e){return d}}, set(k,v){try{localStorage.setItem('hqh_'+k,JSON.stringify(v))}catch(e){}}};
-const opt = Object.assign({speed:100,size:52,hideLv:0,loop:false,ball:true,met:false,ci:true,song:'hqh',mix:{},fold:false}, store.get('opt2',{}));
+const opt = Object.assign({speed:100,size:52,rsize:0,hideLv:0,loop:false,ball:true,met:false,metVol:70,rhy:true,ci:true,song:'hqh',mix:{},fold:false}, store.get('opt2',{}));
 opt.speed = Math.min(100, Math.max(80, +opt.speed || 100)); if (!SONGS[opt.song]) opt.song = 'hqh';
 const saveOpt = () => store.set('opt2', opt);
 const fmtT = s => { s = Math.max(0, s); return Math.floor(s/60) + ':' + String(Math.floor(s%60)).padStart(2,'0'); };
@@ -194,8 +217,72 @@ function zyHTML(z){
   return '<span class="zy"><span class="zb">' + (light ? '˙' : '') + z + (tone ? '<span class="tn">' + tone + '</span>' : '') + '</span></span>';
 }
 const lineText = li => { const L = S.lines[li]; let s = []; for (let k = L.a; k <= L.b; k++) s.push(S.chars[k][0]); return /^[A-Za-z\u3105-\u3129]/.test(s[0]) ? s.join(' ') : s.join(''); };
+/* ---------- rhythm grid helpers ---------- */
+function beatOfT(t){ const b = S.beats; let lo = 0, hi = b.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (b[m] <= t) lo = m; else hi = m - 1; } const nx = b[lo+1] ?? b[lo] + 1; return lo + (t - b[lo]) / (nx - b[lo]); }
+function estW(c){
+  const h = c[0];
+  if (/^[ㄅ-ㄩ]/.test(h)) return Math.max(1.0, h.length * 0.6 + 0.2);
+  if (/^[A-Za-z]/.test(h)) return Math.max(1.0, h.length * 0.5 + 0.3);
+  return 1.0 + (c[1] ? 0.36 : 0) + 0.1;
+}
+const lbEls = [], bcMap = {};
+function makeCh(k){
+  const c = S.chars[k], e = document.createElement('span');
+  e.className = 'ch' + (/^[A-Za-z]/.test(c[0]) ? ' lat' : (/^[ㄅ-ㄩ]/.test(c[0]) ? ' zym' : '')); e.dataset.k = k;
+  e.innerHTML = '<span class="h">' + c[0] + '</span>' + zyHTML(c[1]);
+  e.onclick = () => onCharTap(k, e);
+  chEls[k] = e; return e;
+}
+const EMPTY_SLOT = 0.2;   /* 沒有字開始的 1/4 拍所佔的寬度（單位：字大小） */
+function buildRhyLine(L, w){
+  const cs = S.chars, items = []; let prev = -1;
+  for (let k = L.a; k <= L.b; k++) {
+    let g = Math.round(beatOfT(cs[k][2]) * 4); if (g <= prev) g = prev + 1;
+    let e = Math.round(beatOfT(cs[k][3]) * 4); if (e <= g) e = g + 1;
+    items.push({k, g, e}); prev = g;
+  }
+  const bars = S.bars, barAt = beat => { let i = 0; while (i + 1 < bars.length && bars[i + 1] <= beat) i++; return i; };
+  const bi0 = barAt(Math.floor(items[0].g / 4)), bi1 = Math.min(bars.length - 2, barAt(Math.floor((Math.max(...items.map(x => x.e)) - 1) / 4)));
+  const g0 = bars[bi0] * 4, g1 = (bars[bi1 + 1] ?? S.beats.length) * 4;
+  const onset = {}; items.forEach(it => onset[it.g] = it);
+  const wd = [], X = []; let acc = 0;
+  for (let g = g0; g <= g1; g++) { X[g] = acc; const it = onset[g]; const sw = it ? estW(cs[it.k]) + 0.05 : EMPTY_SLOT; wd[g] = sw; acc += sw; }
+  w.classList.add('rhy');
+  for (let bi = bi0; bi <= bi1; bi++) {
+    const sb = bars[bi], eb = bars[bi + 1], gs = sb * 4, ge = eb * 4, x0 = X[gs];
+    const bar = document.createElement('div'); bar.className = 'bar'; bar.style.setProperty('--bw', (X[ge] - x0).toFixed(3));
+    for (let b = sb; b < eb; b++) {
+      const bc = document.createElement('div'); bc.className = 'bc'; bc.style.setProperty('--x', (X[b * 4] - x0).toFixed(3)); bc.style.setProperty('--w', (X[b * 4 + 4] - X[b * 4]).toFixed(3));
+      bc.innerHTML = '<span class="bn">' + (b - sb + 1) + '</span>'; bar.appendChild(bc); (bcMap[b] = bcMap[b] || []).push(bc);
+    }
+    items.forEach(it => {
+      if (it.g < gs || it.g >= ge) return;
+      const q = it.g % 4;
+      if (q) { const sm = document.createElement('span'); sm.className = 'sm'; sm.style.setProperty('--x', (X[it.g] - x0 + 0.05).toFixed(3)); sm.textContent = q === 2 ? '＆' : '·'; bar.appendChild(sm); }
+      const ch = makeCh(it.k); ch.style.setProperty('--x', (X[it.g] - x0).toFixed(3)); bar.appendChild(ch);
+    });
+    /* 長度條：一個字如果跨過小節線，就在後面的小節接著畫 */
+    items.forEach(it => {
+      const a = Math.max(it.g, gs), b = Math.min(it.e, ge); if (b <= a) return;
+      const el = document.createElement('div'), fill = document.createElement('i'); el.className = 'lb'; el.appendChild(fill);
+      el.style.setProperty('--x', (X[a] - x0 + 0.03).toFixed(3)); el.style.setProperty('--w', Math.max(0.3, X[b] - X[a] - 0.12).toFixed(3));
+      bar.appendChild(el); (lbEls[it.k] = lbEls[it.k] || []).push({el, fill, f0: (a - it.g) / (it.e - it.g), f1: (b - it.g) / (it.e - it.g)});
+    });
+    w.appendChild(bar);
+  }
+}
+const curSize = () => opt.rhy ? (opt.rsize || autoSize()) : opt.size;
+function autoSize(){
+  const bars = [...document.querySelectorAll('#sheet .bar')].map(b => +b.style.getPropertyValue('--bw')).sort((a, b) => a - b);
+  if (!bars.length) return 44;
+  const avail = $('sheet').clientWidth - 32 - 20 - 44 - 12 - 8, typ = bars[Math.floor(bars.length * 0.7)], mx = bars[bars.length - 1];
+  let s = avail / (2 * typ + 0.4); if (s < 36) s = avail / (mx + 0.4);
+  return Math.round(Math.max(22, Math.min(56, s)));
+}
+function applySize(){ const s = curSize(); document.documentElement.style.setProperty('--lyric', s + 'px'); $('size').value = s; $('sizeV').textContent = s; }
+let rzT; addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(() => { if (opt.rhy && !opt.rsize) applySize(); }, 150); });
 function buildSheet(){
-  const m = $('sheet'); m.innerHTML = ''; chEls.length = lineEls.length = secEls.length = 0;
+  const m = $('sheet'); m.innerHTML = ''; chEls.length = lineEls.length = secEls.length = lbEls.length = 0; Object.keys(bcMap).forEach(k => delete bcMap[k]); rhyEls = []; rhyBeat = -1; rhyLb = null;
   S.sections.forEach((sec, si) => {
     const d = document.createElement('section'); d.className = 'sec'; d.innerHTML = '<h2>' + sec.name + '</h2>';
     if (!sec.lines.length) {
@@ -212,19 +299,18 @@ function buildSheet(){
       l.appendChild(b);
       if (L.key) { const k = document.createElement('span'); k.className = 'kt'; k.textContent = L.key; l.appendChild(k); }
       const w = document.createElement('div'); w.className = 'lyr';
-      for (let k = L.a; k <= L.b; k++) {
-        const c = S.chars[k], e = document.createElement('span'); e.className = 'ch' + (/^[A-Za-z]/.test(c[0]) ? ' lat' : (/^[\u3105-\u3129]/.test(c[0]) ? ' zym' : '')); e.dataset.k = k;
-        e.innerHTML = '<span class="h">' + c[0] + '</span>' + zyHTML(c[1]);
+      if (opt.rhy) buildRhyLine(L, w);
+      else for (let k = L.a; k <= L.b; k++) {
+        const c = S.chars[k], e = makeCh(k);
         if (k < L.b) { const nx = S.chars[k+1][2], bi = Math.max(0, Math.min(S.beats.length - 2, lb(beatArr, c[2] + 0.0001) - 1)); e.style.setProperty('--g', ((nx - c[2]) / (S.beats[bi+1] - S.beats[bi]) * (c[1] ? 1 : 0.35)).toFixed(3)); }
-        e.onclick = () => onCharTap(k, e);
-        w.appendChild(e); chEls[k] = e;
+        w.appendChild(e);
       }
       l.onclick = ev => { if (!ev.target.closest('.lp') && !ev.target.closest('.ch')) startFrom(L.t0, li); };
       l.appendChild(w); d.appendChild(l); lineEls[li] = l;
     });
     m.appendChild(d); secEls[si] = d;
   });
-  applyHide();
+  applySize(); applyHide();
 }
 function buildChips(){
   const c = $('chips'); c.innerHTML = '';
@@ -252,11 +338,12 @@ function ensureAudio(){
     ctx = new (window.AudioContext || window.webkitAudioContext)();
     const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 3;
     master = ctx.createGain(); master.gain.value = 0.9; master.connect(comp); comp.connect(ctx.destination);
-    clickBus = ctx.createGain(); clickBus.gain.value = 0.5; clickBus.connect(master);
+    clickBus = ctx.createGain(); clickBus.gain.value = 0.5 * opt.metVol / 70; clickBus.connect(master);
   }
   els().forEach(m => { if (!m.bus) { m.bus = ctx.createGain(); m.bus.connect(master); ctx.createMediaElementSource(m.el).connect(m.bus); } });
   applyVol();
 }
+const applyClickVol = () => { if (ctx) clickBus.gain.setTargetAtTime(0.5 * opt.metVol / 70, ctx.currentTime, 0.03); };
 const mixOf = id => { const k = opt.song + '_' + id, tr = song.tracks.find(t => t.id === id); return opt.mix[k] || (opt.mix[k] = {on:true, vol: tr ? tr.vol : 80}); };
 function applyVol(){
   if (!ctx) return;
@@ -343,18 +430,29 @@ function paint(t, force){
     const li = k >= 0 ? lineOf(k) : -1;
     if (li !== lastLine || force) {
       lineEls.forEach(e => e && e.classList.remove('cur'));
-      document.querySelectorAll('.ch.done,.ch.on').forEach(e => e.classList.remove('done','on'));
+      document.querySelectorAll('.ch.done,.ch.on,.lb.done,.lb.on').forEach(e => e.classList.remove('done','on'));
       if (li >= 0) { lineEls[li].classList.add('cur'); if (T.playing) lineEls[li].scrollIntoView({block:'center', behavior: reduce()}); }
       lastLine = li;
     }
-    if (li >= 0) { const L = S.lines[li]; for (let j = L.a; j <= L.b; j++) { chEls[j].classList.toggle('on', j === lit); chEls[j].classList.toggle('done', j < k || (gap && j === k)); } }
+    if (li >= 0) { const L = S.lines[li]; for (let j = L.a; j <= L.b; j++) { const dn = j < k || (gap && j === k); chEls[j].classList.toggle('on', j === lit); chEls[j].classList.toggle('done', dn); if (lbEls[j]) lbEls[j].forEach(s => { s.el.classList.toggle('on', j === lit); s.el.classList.toggle('done', dn); }); } }
     lastK = lit;
   }
   const si = S.sections.findIndex(s => t >= s.t0 && t < s.t1);
   if (si !== lastSec) { secEls.forEach(e => e.classList.remove('cur')); if (si >= 0) secEls[si].classList.add('cur'); lastSec = si; }
-  paintCue(t); paintMon(t);
+  paintCue(t); paintMon(t); paintRhy(t, lit);
   if (!seeking) $('seek').value = Math.round(Math.max(0, t) / S.total * 1000);
   $('tNow').textContent = fmtT(t);
+}
+let rhyEls = [], rhyBeat = -1, rhyLb = null;
+function paintRhy(t, lit){
+  if (!opt.rhy) return;
+  const bi = T.playing ? Math.max(0, lb(beatArr, t + 0.0001) - 1) : -1;
+  if (bi !== rhyBeat) { rhyEls.forEach(e => e.classList.remove('on')); rhyEls = bcMap[bi] || []; rhyEls.forEach(e => e.classList.add('on')); rhyBeat = bi; }
+  /* 長度條邊唱邊填滿 */
+  const segs = lit >= 0 ? lbEls[lit] : null, c = lit >= 0 ? S.chars[lit] : null;
+  if (rhyLb && rhyLb !== segs) rhyLb.forEach(s => s.fill.style.width = '');
+  if (segs) { const p = Math.min(1, Math.max(0, (t - c[2]) / Math.max(0.05, c[3] - c[2]))); segs.forEach(s => { s.fill.style.width = (Math.min(1, Math.max(0, (p - s.f0) / (s.f1 - s.f0))) * 100).toFixed(1) + '%'; }); }
+  rhyLb = segs;
 }
 function paintMon(t){
   const bi = Math.max(0, lb(beatArr, t + 0.0001) - 1);
@@ -401,7 +499,7 @@ function ballUpdate(t){
   if (bi < 0) { const q = (t - bt[0]) / bl0, f = Math.floor(q); p = q - f; n = (((f % 4) + 4) % 4) + 1; }
   else if (bi >= bt.length - 1) { p = 0; n = barNo[bt.length - 1]; }
   else { p = (t - bt[bi]) / (bt[bi + 1] - bt[bi]); n = barNo[bi]; }
-  const H = Math.max(14, Math.min(34, opt.size * 0.45)), y = y0 - 30 - H * 4 * p * (1 - p);
+  const sz = curSize(), H = Math.max(14, Math.min(34, sz * 0.45)), y = y0 - 30 - (opt.rhy ? sz * 0.55 : 0) - H * 4 * p * (1 - p);
   const top = document.querySelector('.transport').getBoundingClientRect().bottom;
   if (y0 < top + 28 || y0 > innerHeight) { ball.hidden = true; return; }
   ball.hidden = false; ball.className = n === 1 ? 'one' : '';
@@ -452,13 +550,18 @@ function slider(id, key, out, fmt, after){
   s.addEventListener('input', () => { opt[key] = +s.value; $(out).textContent = fmt(opt[key]); after && after(); }); s.addEventListener('change', saveOpt);
 }
 slider('speed','speed','speedV', v => v + '%', () => els().forEach(m => m.el.playbackRate = rate()));
-slider('size','size','sizeV', v => v, () => document.documentElement.style.setProperty('--lyric', opt.size + 'px'));
+{ const s = $('size'); s.addEventListener('input', () => { const v = +s.value; if (opt.rhy) opt.rsize = v; else opt.size = v; $('sizeV').textContent = v; document.documentElement.style.setProperty('--lyric', v + 'px'); }); s.addEventListener('change', saveOpt); }
 $('ciBtn').setAttribute('aria-pressed', String(opt.ci));
 $('ciBtn').onclick = () => { opt.ci = !opt.ci; $('ciBtn').setAttribute('aria-pressed', String(opt.ci)); saveOpt(); toast(opt.ci ? '預備拍：開（播放前先數 4 拍）' : '預備拍：關'); };
 $('ballBtn').setAttribute('aria-pressed', String(opt.ball));
 $('ballBtn').onclick = () => { opt.ball = !opt.ball; $('ciBtn').setAttribute('aria-pressed', String(opt.ci));
 $('ciBtn').onclick = () => { opt.ci = !opt.ci; $('ciBtn').setAttribute('aria-pressed', String(opt.ci)); saveOpt(); toast(opt.ci ? '預備拍：開（播放前先數 4 拍）' : '預備拍：關'); };
 $('ballBtn').setAttribute('aria-pressed', String(opt.ball)); saveOpt(); };
+$('rhyBtn').setAttribute('aria-pressed', String(opt.rhy));
+$('rhyBtn').onclick = () => { opt.rhy = !opt.rhy; $('rhyBtn').setAttribute('aria-pressed', String(opt.rhy)); saveOpt(); const t = songNow(); lastK = -2; lastLine = -1; buildSheet(); paint(t, true); toast(opt.rhy ? '節奏格：開（每個字對著它的拍子）' : '節奏格：關'); };
+const syncMet = () => { $('metBtn').setAttribute('aria-pressed', String(opt.met)); };
+$('metBtn').onclick = () => { opt.met = !opt.met; saveOpt(); syncMet(); buildMixer(); toast(opt.met ? '節拍聲：開（第 1 拍比較重）' : '節拍聲：關'); };
+syncMet();
 function setFold(f){ opt.fold = f; $('mixWrap').hidden = f; $('fold').setAttribute('aria-expanded', String(!f)); $('fold').textContent = (f ? '▸' : '▾') + ' 音軌與設定'; }
 $('fold').onclick = () => { setFold(!opt.fold); saveOpt(); };
 
@@ -467,17 +570,17 @@ function buildMixer(){
   const box = $('mixer'); box.innerHTML = '';
   const strips = song.tracks.map(tr => ({id: tr.id, name: tr.name, cc: tr.cc, sub: ''})).concat([{id:'met', name:'節拍器', cc:'var(--c4)', sub:'每拍一聲，第 1 拍重音'}]);
   strips.forEach(s => {
-    const isMet = s.id === 'met', x = isMet ? {on: opt.met} : mixOf(s.id);
+    const isMet = s.id === 'met', x = isMet ? {on: opt.met, vol: opt.metVol} : mixOf(s.id);
     const d = document.createElement('div'); d.className = 'strip' + (x.on ? '' : ' off'); d.style.setProperty('--cc', s.cc);
     d.innerHTML = '<div class="sh"><div><b>' + s.name + '</b><div class="vol">' + s.sub + '</div></div><button class="mute" aria-pressed="' + (isMet ? String(x.on) : String(!x.on)) + '">' + (isMet ? (x.on ? '開' : '關') : (x.on ? '有聲' : '靜音')) + '</button></div>' +
-      (isMet ? '' : '<div class="vol"><span>音量</span><input type="range" min="0" max="100" value="' + x.vol + '" aria-label="' + s.name + '音量"></div>');
+      ('<div class="vol"><span>音量</span><input type="range" min="0" max="100" value="' + x.vol + '" aria-label="' + s.name + '音量"></div>');
     const btn = d.querySelector('.mute');
     btn.onclick = () => {
-      if (isMet) { opt.met = !opt.met; btn.setAttribute('aria-pressed', String(opt.met)); btn.textContent = opt.met ? '開' : '關'; d.classList.toggle('off', !opt.met); }
+      if (isMet) { opt.met = !opt.met; btn.setAttribute('aria-pressed', String(opt.met)); btn.textContent = opt.met ? '開' : '關'; d.classList.toggle('off', !opt.met); syncMet(); }
       else { x.on = !x.on; btn.setAttribute('aria-pressed', String(!x.on)); btn.textContent = x.on ? '有聲' : '靜音'; d.classList.toggle('off', !x.on); applyVol(); }
       saveOpt();
     };
-    const r = d.querySelector('input'); if (r) { r.oninput = () => { x.vol = +r.value; applyVol(); }; r.onchange = saveOpt; }
+    const r = d.querySelector('input'); if (r) { r.oninput = () => { if (isMet) { opt.metVol = +r.value; applyClickVol(); } else { x.vol = +r.value; applyVol(); } }; r.onchange = saveOpt; }
     box.appendChild(d);
   });
 }
